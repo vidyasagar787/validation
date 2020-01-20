@@ -1,0 +1,193 @@
+<form id="login-form" redirect="login" enctype="multipart/form-data" action="login/loginProcess">
+	<div class="row">
+		<div class="col-12 form-group">
+			<label for="email">Enter Email</label>
+			<input type="text" class="form-control" name="email" required min="3" max="10" regex="/^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/" error="Email is not valid" />
+		</div>
+		<div class="col-12 form-group">
+			<label>Enter Password</label>
+			<input type="password" class="form-control" name="password" required min="3" max="10" error="password error"/>
+		</div>
+		<div class="col-12 form-group">
+			<label>File</label>
+			<input type="file" class="form-control" name="profileImage[]" display="Profile Image" required />
+		</div>
+		<div class="col-12 form-group">
+			<label>Checkboxs</label>
+			<input type="checkbox" name="categorires[]" display="Categorires" value="1" required />
+			<input type="checkbox" name="categorires[]" display="Categorires" value="2"/>
+			<input type="checkbox" name="categorires[]" display="Categorires" value="3"/>
+		</div>
+
+		<div class="col-12 form-group">
+			<label>Gender</label>
+			<input type="radio" name="gender" display="Gender" value="1" required />
+			<input type="radio" name="gender" display="Gender" value="1" />
+		</div>
+
+		<div class="col-12 form-group">
+			<label>Select Box</label>
+			<select class="form-control" name="selectGender" required >
+				<option value="">Select One</option>
+				<option value="1">Male</option>
+				<option value="2">Female</option>
+			</select>
+		</div>
+
+		<div class="col-12 form-group">
+			<label>Text</label>
+			<textarea class="form-control" name="textarea" required display="Text Box"></textarea>
+		</div>
+
+
+		<div class="col-12 mt-1">
+			<div class="form-group">
+				<input type="button" class="btn btn-danger submitErrors" id="submitLogin" value="Submit" />
+			</div>
+		</div>
+	</div>
+</form>
+
+<script>
+$(function() {
+
+    $(document).on('click', '#submitLogin', function () {
+        formValidation('login-form');
+    });
+
+});
+
+var baseUrl = $('#base_url').val();
+var controller = $('#controller').val();
+var method = $('#method').val();
+var param1 = $('#param1').val();
+
+function ajaxSend(url, formData, type = 'POST', dataType = 'JSON') {
+    var request;
+    if (request) { request.abort(); }
+    return request = $.ajax({
+        url: baseUrl + url,
+        type: type,
+        dataType: dataType,
+        data: formData,
+        processData: false,
+        contentType: false
+    });
+}
+
+function formValidation(formId) {
+
+    var $form = $('#' + formId + '');
+    $form.find('.fieldError').remove();
+    var $inputs = $form.find("input, select, textarea");
+    var fields = $form.serializeArray();
+    var formData = new FormData($form[0]);
+    $inputs.prop("disabled", true);
+    var submitBtnText = $form.find('.submitErrors').val();
+    var formErrors = 0;
+
+    $.each($inputs, function(key) {
+
+        var fieldError = 0;
+        var checkBoxError = 0;
+        var $fieldElement = $(this.tagName + '[name="' + this.name + '"');
+        var fieldValue = this.value;
+        var errorMsg = '';
+
+
+        var display = $fieldElement.attr('display');
+        if (typeof display !== typeof undefined && display !== false) {
+            displayName = display
+        } else {
+            displayName = ucwords(this.name);
+        }
+
+        var error = $fieldElement.attr('error');
+        if (typeof error !== typeof undefined && error !== false) {
+        	errorMsg = error;
+        }
+
+
+        var required = $fieldElement.attr('required'); // checking if required
+        if (typeof required !== typeof undefined && required !== false) {
+
+            if (fieldValue == '') {
+                fieldError = 1;
+                if(errorMsg == '') errorMsg = displayName + ' is required';
+            }
+
+            if ($fieldElement.is(':checkbox') || $fieldElement.is(':radio')) {
+
+                if ($('input[name="' + this.name + '"]:checked').map(function() { return this.value }).get().length < 1) {
+                    checkBoxError = 1;
+                    if(errorMsg == '') errorMsg = displayName + ' is required';
+                }
+            }
+
+        }
+
+        if (fieldValue != '') {
+
+        	var regex = $fieldElement.attr('regex'); // checking regex
+        	if (typeof regex !== typeof undefined && regex !== false && $fieldElement.is(':text') ) {
+        		var regex = new RegExp(regex);
+                if (!regex.test(fieldValue)) {
+                    fieldError = 1;
+                    if(errorMsg == '') errorMsg = displayName + ' is not a valid format';
+                }
+            }
+
+            var min = $fieldElement.attr('min'); // checking  min
+            if (typeof required !== typeof undefined && required !== false) {
+                if (min > fieldValue.length) {
+                    fieldError = 1;
+                    if(errorMsg == '') errorMsg = displayName + ' Minimum length is ' + min;
+                }
+            }
+
+            var max = $fieldElement.attr('max'); // checking  max
+            if (typeof required !== typeof undefined && required !== false) {
+                if (max < fieldValue.length) {
+                    fieldError = 1;
+                    if(errorMsg == '') errorMsg = displayName + ' Maximum length is ' + max;
+                }
+            }
+        }
+
+        if (fieldError == 1) {
+            $fieldElement.after('<span class="text-danger fieldError" id="span_' + key + '"></span>');
+            $('#span_' + key).text(errorMsg);
+            formErrors = 1;
+            $fieldElement.addClass('border-red');
+        }
+
+        if (checkBoxError == 1) {
+            $('input[name="' + this.name + '"]:last-child').after('<div class="text-danger fieldError" id="span_' + key + '"></div>');
+            $('#span_' + key).text(errorMsg);
+            formErrors = 1;
+        }
+
+    });
+
+    if (formErrors == 0) {
+        $form.find('.submitErrors').val('Please wait..');
+        ajaxSend($form.attr('action'), formData).done(data => {
+            if (data['status'] == true) {
+                var redirect = $form.attr('redirect');
+                //window.location = redirect;
+            } else {
+                $form.find('.submitErrors').before('<div class="text-danger fieldError">' + data['message'] + '</div>');
+            }
+        }).fail(e => { alert(e.statusText); }).always(() => {});
+    }
+    $inputs.prop("disabled", false);
+    $form.find('.submitErrors').val(submitBtnText);
+} // end formValidation
+
+
+function ucwords(str) {
+    return (str + '').replace(/^([a-z])|\s+([a-z])/g, function($1) {
+        return $1.toUpperCase();
+    });
+}
+</script>
